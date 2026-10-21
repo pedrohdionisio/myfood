@@ -39,13 +39,13 @@ flowchart LR
     app["myfood-app<br/>customers and drivers"]
     dash["myfood-dashboard<br/>restaurant owners"]
     api["myfood-api"]
-    pg[("PostgreSQL")]
-    aws["AWS<br/>Cognito, S3, SQS, Lambda"]
+    pg[("PostgreSQL<br/>Neon")]
+    aws["AWS<br/>Lambda, API Gateway, Cognito,<br/>S3, SQS, DynamoDB"]
     abacate["AbacatePay<br/>Pix"]
     expo["Expo Push"]
 
     app -->|REST| api
-    dash -->|"REST + real-time events"| api
+    dash -->|"REST + WebSocket"| api
     api --> pg
     api --> aws
     api <-->|"charges, webhooks"| abacate
@@ -105,22 +105,26 @@ Things that happen along the way, and why they matter:
   inwards — and a data / presentation / shared split in both frontends.
 - **Two isolated user pools** (customers, restaurant staff) on AWS Cognito, with roles checked in
   the database on every request so revoking access takes effect immediately.
-- **Real time without WebSockets**: server-sent events for the dashboard, push notifications for the
-  app.
-- **Pay-per-use infrastructure** only (Cognito, S3, SQS, Lambda), provisioned as code with the
-  Serverless Framework.
+- **Real time on serverless**: an API Gateway WebSocket for the dashboard, with the open connections
+  in DynamoDB and a single-use ticket instead of a token in the URL; push notifications for the app.
+- **100% serverless backend**: the API and every background job run on AWS Lambda, against a
+  serverless PostgreSQL (Neon). Nothing polls the database — work is triggered by events, with an
+  hourly sweep as the safety net — so the whole backend scales to zero and fits free tiers.
+  Provisioned as code with the Serverless Framework.
 - **Tests against a real PostgreSQL**, with external services faked, and CI that also fails when a
   migration or the API contract falls out of date.
 
 ## Status
 
-The platform runs locally with Docker; it is not deployed yet. The
+The backend runs in a single development stage on AWS and Neon; there is no public deployment. The
+dashboard and the app run on the developer's machine, against either the deployed API or the API
+server running locally — both use the same database and AWS resources. The
 [API reference](https://pedrohdionisio.github.io/myfood-api/api/) is published and always matches
 the code.
 
 To run everything, start with [myfood-api](https://github.com/pedrohdionisio/myfood-api#running-the-full-stack)
-(it seeds restaurants, customers, drivers and two months of orders), then the
-[dashboard](https://github.com/pedrohdionisio/myfood-dashboard#running-locally) and the
+(it provisions the stage and seeds restaurants, customers, drivers and two months of orders), then
+the [dashboard](https://github.com/pedrohdionisio/myfood-dashboard#running-locally) and the
 [app](https://github.com/pedrohdionisio/myfood-app#running-locally).
 
 ## Author
